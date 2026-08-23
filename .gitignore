@@ -1,0 +1,11 @@
+/target
+/fuzz/target
+/fuzz/artifacts
+/fuzz/corpus
+__pycache__/
+*.pyc
+*.pyo
+*.profraw
+.DS_Store
+.idea/
+.vscode/
