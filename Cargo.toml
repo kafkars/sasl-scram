@@ -1,0 +1,108 @@
+[workspace]
+resolver = "3"
+exclude = ["fuzz"]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.88"
+authors = ["zsumz <shawn@zsumz.com>"]
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/zsumz/sasl-scram"
+homepage = "https://github.com/zsumz/sasl-scram"
+documentation = "https://docs.rs/sasl-scram"
+
+[workspace.dependencies]
+ctutils = { version = "0.4.2", default-features = false }
+hmac = { version = "0.13.0", default-features = false, features = ["zeroize"] }
+pbkdf2 = { version = "0.13.0", default-features = false, features = ["hmac"] }
+sha2 = { version = "0.11.0", default-features = false, features = ["zeroize"] }
+stringprep = "0.1.5"
+unicode-normalization = "0.1.25"
+zeroize = { version = "1.9.0", default-features = false, features = ["alloc"] }
+
+[package]
+name = "sasl-scram"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+description = "Strict, sans-I/O SCRAM for Rust."
+keywords = ["sasl", "scram", "authentication", "security", "no-std"]
+categories = ["authentication", "cryptography", "no-std", "network-programming"]
+include = [
+  "Cargo.lock",
+  "Cargo.toml",
+  "LICENSE",
+  "README.md",
+  "examples/**/*.rs",
+  "src/**/*.rs",
+  "tests/**/*.rs",
+]
+
+[[example]]
+name = "scram-sha256-client"
+path = "examples/scram_sha256_client.rs"
+required-features = ["std", "sha256", "saslprep"]
+
+[[example]]
+name = "continuation-server"
+path = "examples/continuation_server.rs"
+required-features = ["std", "sha256", "saslprep"]
+
+[[example]]
+name = "scram-sha512-plus"
+path = "examples/scram_sha512_plus.rs"
+required-features = ["std", "sha512"]
+
+[features]
+default = ["std", "sha256", "saslprep"]
+std = ["zeroize/std"]
+sha256 = ["dep:ctutils", "dep:hmac", "dep:pbkdf2", "dep:sha2"]
+sha512 = ["dep:ctutils", "dep:hmac", "dep:pbkdf2", "dep:sha2"]
+saslprep = ["std", "dep:stringprep", "dep:unicode-normalization"]
+
+[dependencies]
+ctutils = { workspace = true, optional = true }
+hmac = { workspace = true, optional = true }
+pbkdf2 = { workspace = true, optional = true }
+sha2 = { workspace = true, optional = true }
+stringprep = { workspace = true, optional = true }
+unicode-normalization = { workspace = true, optional = true }
+zeroize.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[lints]
+workspace = true
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+missing_docs = "warn"
+unreachable_pub = "warn"
+unused_lifetimes = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+dbg_macro = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+unwrap_used = "deny"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+similar_names = "allow"
+struct_field_names = "allow"
+too_many_lines = "allow"
