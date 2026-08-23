@@ -1,0 +1,66 @@
+name: Fuzz
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "37 5 * * 1"
+
+concurrency:
+  group: fuzz-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: "1"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  fuzz:
+    name: fuzz (${{ matrix.target }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [client-first, server-first, client-final, server-final, conversation]
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Reject repository-local Cargo configuration
+        run: |
+          for cargo_config in .cargo/config .cargo/config.toml .cargo/audit.toml; do
+            if [[ -e "$cargo_config" || -L "$cargo_config" ]]; then
+              echo "repository-local Cargo configuration is not permitted: $cargo_config" >&2
+              exit 1
+            fi
+          done
+
+      - name: Set up pinned nightly Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          toolchain: nightly-2026-08-01
+
+      - name: Install fuzzing tools
+        run: |
+          rustup component add rust-src --toolchain nightly-2026-08-01
+          cargo install cargo-fuzz --version 0.13.2 --locked
+
+      - name: Fetch locked fuzz dependencies
+        run: cargo fetch --manifest-path fuzz/Cargo.toml --locked
+
+      - name: Run bounded fuzz target
+        run: >-
+          cargo +nightly-2026-08-01 fuzz run "${{ matrix.target }}" --
+          -max_total_time=180
+          -timeout=10
+          -rss_limit_mb=4096
+          -max_len=32768
