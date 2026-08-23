@@ -1,0 +1,51 @@
+[package]
+name = "sasl-scram-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+license = "Apache-2.0"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4.13"
+sasl-scram = { path = "..", version = "=0.0.1", default-features = false, features = ["sha256", "sha512"] }
+
+[[bin]]
+name = "client-first"
+path = "fuzz_targets/client_first.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "server-first"
+path = "fuzz_targets/server_first.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "client-final"
+path = "fuzz_targets/client_final.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "server-final"
+path = "fuzz_targets/server_final.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "conversation"
+path = "fuzz_targets/conversation.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]
+members = ["."]
