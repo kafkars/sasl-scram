@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+set -euo pipefail
+export LC_ALL=C
+
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$repo_root"
+
+version=$(python3 - <<'PY'
+import tomllib
+with open("Cargo.toml", "rb") as manifest:
+    print(tomllib.load(manifest)["workspace"]["package"]["version"])
+PY
+)
+
+package_target=${CARGO_TARGET_DIR:-"$repo_root/target"}
+if [[ "$package_target" != /* ]]; then
+  package_target="$repo_root/$package_target"
+fi
+export CARGO_TARGET_DIR="$package_target"
+
+package_tmp=$(mktemp -d "${TMPDIR:-/tmp}/sasl-scram-package-check.XXXXXX")
+trap 'rm -rf -- "$package_tmp"' EXIT
+
+cargo package --package sasl-scram --allow-dirty --locked --offline
+
+archive="$package_target/package/sasl-scram-$version.crate"
+archive_list="$package_tmp/archive-list.txt"
+tar -tzf "$archive" >"$archive_list"
+
+required=(
+  Cargo.toml
+  LICENSE
+  README.md
+  examples/continuation_server.rs
+  examples/scram_sha256_client.rs
+  examples/scram_sha512_plus.rs
+  examples/support/error.rs
+  examples/support/mod.rs
+  examples/support/nonce.rs
+  src/lib.rs
+  tests/channel_binding.rs
+  tests/client_state.rs
+  tests/hostile_messages.rs
+  tests/identity_properties.rs
+  tests/kafka_sha512.rs
+  tests/message_encoding.rs
+  tests/preparation_profiles.rs
+  tests/postgres_interop.rs
+  tests/public_api.rs
+  tests/rfc7677.rs
+  tests/secret_safety.rs
+  tests/server_authorization.rs
+  tests/server_credential.rs
+  tests/server_policy.rs
+  tests/server_state.rs
+  tests/sha512_state.rs
+  tests/transcript_preservation.rs
+)
+for path in "${required[@]}"; do
+  if ! grep -Fx "sasl-scram-$version/$path" "$archive_list" >/dev/null; then
+    echo "sasl-scram archive is missing $path" >&2
+    exit 1
+  fi
+done
+
+if grep -E '(^|/)(target|scripts|\.git|\.github|\.cargo)(/|$)' "$archive_list" >/dev/null; then
+  echo "sasl-scram archive contains repository or build state" >&2
+  exit 1
+fi
+
+tar -xzf "$archive" -C "$package_tmp"
+package_dir="$package_tmp/sasl-scram-$version"
+cmp LICENSE "$package_dir/LICENSE"
+cmp README.md "$package_dir/README.md"
+
+cargo check \
+  --manifest-path "$package_dir/Cargo.toml" \
+  --all-targets \
+  --all-features \
+  --locked \
+  --offline \
+  --target-dir "$package_tmp/target-all"
+cargo check \
+  --manifest-path "$package_dir/Cargo.toml" \
+  --no-default-features \
+  --features sha256 \
+  --locked \
+  --offline \
+  --target-dir "$package_tmp/target-no-std"
+cargo check \
+  --manifest-path "$package_dir/Cargo.toml" \
+  --no-default-features \
+  --features sha512 \
+  --locked \
+  --offline \
+  --target-dir "$package_tmp/target-no-std-sha512"
+cargo run \
+  --quiet \
+  --manifest-path "$package_dir/Cargo.toml" \
+  --example scram-sha256-client \
+  --locked \
+  --offline \
+  --target-dir "$package_tmp/target-examples"
+cargo run \
+  --quiet \
+  --manifest-path "$package_dir/Cargo.toml" \
+  --example continuation-server \
+  --locked \
+  --offline \
+  --target-dir "$package_tmp/target-examples"
+cargo run \
+  --quiet \
+  --manifest-path "$package_dir/Cargo.toml" \
+  --example scram-sha512-plus \
+  --no-default-features \
+  --features std,sha512 \
+  --locked \
+  --offline \
+  --target-dir "$package_tmp/target-examples"

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$repo_root"
+
+cargo run --quiet --example scram-sha256-client --locked --offline
+cargo run --quiet --example continuation-server --locked --offline
+cargo run \
+  --quiet \
+  --example scram-sha512-plus \
+  --no-default-features \
+  --features std,sha512 \
+  --locked \
+  --offline

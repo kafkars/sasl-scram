@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$repo_root"
+
+cargo fmt --manifest-path fuzz/Cargo.toml --all -- --check
+cargo clippy --manifest-path fuzz/Cargo.toml --all-targets --locked --offline -- -D warnings
+cargo deny \
+  --manifest-path fuzz/Cargo.toml \
+  --config fuzz/deny.toml \
+  --locked \
+  --offline \
+  check bans licenses sources

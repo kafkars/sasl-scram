@@ -1,0 +1,422 @@
+schema = 1
+adapters = ["rust"]
+
+[repository]
+roots = ["."]
+exclude = []
+workspace_members = "exact"
+nested_git = "deny"
+submodules = "deny"
+symlinks = "inside"
+
+[[gate]]
+name = "check"
+kind = "local"
+path = "scripts/check"
+inputs = [
+  "scripts/examples-check",
+  "scripts/fuzz-check",
+  "scripts/guardrails.py",
+  "scripts/package-check",
+  "rust-toolchain.toml",
+  "rustfmt.toml",
+  "clippy.toml",
+  "deny.toml",
+  "fuzz/Cargo.toml",
+  "fuzz/Cargo.lock",
+  "fuzz/deny.toml",
+  "Cargo.toml",
+  "Cargo.lock",
+  "README.md",
+]
+reason = "The repository's canonical local qualification entrypoint."
+
+[[invariant]]
+id = "PUBLIC-API-01"
+title = "Published reference applications exercise only public sans-I/O continuations"
+status = "enforced"
+document = "README.md#reference-applications"
+evidence = [
+  "rust-test:tests/rfc7677.rs::rfc7677_client_exchange_matches_every_wire_message",
+  "rust-test:tests/server_state.rs::known_client_and_server_complete_a_sans_io_loopback",
+  "rust-test:tests/sha512_state.rs::sha512_plus_loopback_authenticates_both_roles",
+  "gate:check",
+  "gate:ci",
+]
+
+[[gate]]
+name = "ci"
+kind = "ci"
+path = ".github/workflows/ci.yml"
+inputs = [".github/actions/setup-rust/action.yml"]
+requires = ["check"]
+reason = "Hosted qualification runs the canonical gate, portable tests, and the MSRV check."
+
+[[gate]]
+name = "fuzz-check"
+kind = "local"
+path = "scripts/fuzz-check"
+inputs = [
+  "fuzz/Cargo.toml",
+  "fuzz/Cargo.lock",
+  "fuzz/deny.toml",
+  "fuzz/fuzz_targets/client_first.rs",
+  "fuzz/fuzz_targets/server_first.rs",
+  "fuzz/fuzz_targets/client_final.rs",
+  "fuzz/fuzz_targets/server_final.rs",
+  "fuzz/fuzz_targets/conversation.rs",
+]
+reason = "Every cargo-fuzz target must compile under the pinned dependency graph."
+
+[[gate]]
+name = "fuzz"
+kind = "ci"
+path = ".github/workflows/fuzz.yml"
+inputs = [
+  ".github/actions/setup-rust/action.yml",
+  "fuzz/Cargo.toml",
+  "fuzz/Cargo.lock",
+  "fuzz/fuzz_targets/client_first.rs",
+  "fuzz/fuzz_targets/server_first.rs",
+  "fuzz/fuzz_targets/client_final.rs",
+  "fuzz/fuzz_targets/server_final.rs",
+  "fuzz/fuzz_targets/conversation.rs",
+]
+requires = ["fuzz-check"]
+reason = "A weekly sanitizer-backed matrix executes every cargo-fuzz target with explicit work bounds."
+
+[[gate]]
+name = "security"
+kind = "ci"
+path = ".github/workflows/security.yml"
+inputs = [".github/actions/setup-rust/action.yml"]
+requires = ["check"]
+reason = "Online advisory checks complement the complete offline qualification gate."
+
+[[invariant]]
+id = "TRANSCRIPT-01"
+title = "Inbound authenticated fragments remain byte-exact"
+status = "enforced"
+document = "README.md#security"
+evidence = [
+  "rust-test:tests/transcript_preservation.rs::client_first_preserves_gs2_and_bare_fragments",
+  "rust-test:tests/transcript_preservation.rs::server_first_preserves_original_attribute_bytes",
+  "rust-test:tests/transcript_preservation.rs::client_final_preserves_without_proof_fragment",
+  "gate:check",
+  "gate:ci",
+]
+
+[[invariant]]
+id = "PARSER-01"
+title = "Malformed and unsupported SCRAM structure fails closed"
+status = "enforced"
+document = "README.md#security"
+evidence = [
+  "rust-test:tests/hostile_messages.rs::reserved_duplicates_are_rejected",
+  "rust-test:tests/hostile_messages.rs::unsupported_mandatory_extensions_fail_in_every_extension_position",
+  "rust-test:tests/hostile_messages.rs::noncanonical_base64_is_rejected",
+  "rust-test:tests/hostile_messages.rs::server_final_must_contain_exactly_one_terminal_attribute",
+  "gate:fuzz-check",
+  "gate:fuzz",
+  "gate:check",
+]
+
+[[invariant]]
+id = "ENCODING-01"
+title = "Outbound messages are canonical, bounded, and redacted"
+status = "enforced"
+document = "README.md#security"
+evidence = [
+  "rust-test:tests/message_encoding.rs::canonical_messages_round_trip_through_borrowed_views",
+  "rust-test:tests/message_encoding.rs::plus_encoding_uses_exact_escaped_gs2_header_and_binding_data",
+  "rust-test:tests/message_encoding.rs::outbound_transfer_and_errors_remain_explicit_and_bounded",
+  "rust-test:tests/identity_properties.rs::escaping_round_trips_every_small_valid_identity",
+  "gate:check",
+]
+
+[[invariant]]
+id = "SECRET-01"
+title = "Owned sensitive values zeroize on drop and expose only redacted diagnostics"
+status = "enforced"
+document = "README.md#security"
+evidence = [
+  "rust-test:tests/public_api.rs::documented_ascii_preparation_path_compiles",
+  "rust-test:tests/secret_safety.rs::every_owned_sensitive_public_type_guarantees_zeroize_on_drop",
+  "rust-test:tests/secret_safety.rs::explicit_zeroization_clears_all_owned_credential_material",
+  "rust-test:tests/secret_safety.rs::binding_and_message_owners_zeroize_without_loggable_contents",
+  "rust-test:tests/secret_safety.rs::configurations_and_errors_do_not_retain_sensitive_input",
+  "rust-test:tests/client_state.rs::client_states_are_send_and_debug_output_is_redacted",
+  "rust-test:tests/rfc7677.rs::retained_secret_state_is_zeroize_on_drop",
+  "rust-test:tests/server_credential.rs::server_secret_owners_zeroize_explicitly_and_on_drop",
+  "rust-test:tests/server_state.rs::server_states_are_send_and_all_diagnostics_are_redacted",
+  "rust-test:tests/transcript_preservation.rs::server_final_maps_unknown_peer_text_without_retaining_it",
+  "gate:check",
+  "gate:security",
+]
+
+[[invariant]]
+id = "CLIENT-01"
+title = "SHA-256 client success requires the exact transcript and server verifier"
+status = "enforced"
+document = "README.md#client"
+evidence = [
+  "rust-test:tests/rfc7677.rs::rfc7677_client_exchange_matches_every_wire_message",
+  "rust-test:tests/rfc7677.rs::rfc7677_intermediate_derivations_match_independent_values",
+  "rust-test:tests/rfc7677.rs::authenticated_transcript_mutation_invalidates_the_rfc_server_verifier",
+  "rust-test:tests/rfc7677.rs::constant_time_verifier_rejects_every_one_bit_signature_mutation",
+  "rust-test:tests/client_state.rs::server_nonce_must_begin_with_and_strictly_extend_client_nonce",
+  "rust-test:tests/client_state.rs::iteration_policy_rejects_work_before_derivation_state",
+  "rust-test:tests/client_state.rs::final_message_limit_is_checked_before_expensive_derivation",
+  "rust-test:tests/client_state.rs::invalid_server_signature_and_bounded_peer_error_never_authenticate",
+  "gate:fuzz-check",
+  "gate:fuzz",
+  "gate:check",
+  "gate:security",
+]
+
+[[invariant]]
+id = "SERVER-01"
+title = "SHA-256 server success requires a valid exact proof and explicit authorization"
+status = "enforced"
+document = "README.md#server"
+evidence = [
+  "rust-test:tests/rfc7677.rs::rfc7677_intermediate_derivations_match_independent_values",
+  "rust-test:tests/rfc7677.rs::client_proof_fails_after_every_one_bit_transcript_mutation",
+  "rust-test:tests/server_state.rs::known_client_and_server_complete_a_sans_io_loopback",
+  "rust-test:tests/server_state.rs::authorization_is_explicit_and_denial_emits_a_terminal_error",
+  "rust-test:tests/server_state.rs::channel_binding_and_nonce_mismatches_fail_closed",
+  "rust-test:tests/server_authorization.rs::authentication_authorization_and_application_principal_remain_distinct",
+  "rust-test:tests/server_state.rs::credential_policy_rejects_before_server_nonce_generation",
+  "rust-test:tests/server_policy.rs::decoded_channel_binding_payload_is_bounded_before_proof_work",
+  "gate:fuzz-check",
+  "gate:fuzz",
+  "gate:check",
+  "gate:security",
+]
+
+[[invariant]]
+id = "SHA512-01"
+title = "SHA-512 remains a coherent feature-gated and explicitly unregistered extension"
+status = "enforced"
+document = "README.md#mechanisms"
+evidence = [
+  "rust-test:tests/kafka_sha512.rs::kafka_sha512_client_matches_independent_fixed_wire_vector",
+  "rust-test:tests/kafka_sha512.rs::sha512_intermediates_match_independent_values",
+  "rust-test:tests/kafka_sha512.rs::sha512_backend_rejects_every_proof_and_signature_bit_mutation",
+  "rust-test:tests/kafka_sha512.rs::sha512_synthetic_credentials_are_domain_separated",
+  "rust-test:tests/sha512_state.rs::sha512_plus_loopback_authenticates_both_roles",
+  "rust-test:tests/sha512_state.rs::sha512_records_enforce_algorithm_and_output_size_before_randomness",
+  "rust-test:tests/sha512_state.rs::sha512_concealed_user_runs_proof_path_without_a_principal",
+  "rust-test:tests/sha512_state.rs::sha512_secret_states_remain_send_redacted_and_zeroize_on_drop",
+  "gate:fuzz-check",
+  "gate:fuzz",
+  "gate:check",
+  "gate:security",
+]
+
+[[invariant]]
+id = "CHANNEL-BINDING-01"
+title = "PLUS authenticates exact caller-supplied binding data without downgrade"
+status = "enforced"
+document = "README.md#mechanisms"
+evidence = [
+  "rust-test:tests/channel_binding.rs::tls_exporter_plus_loopback_authenticates_only_matching_binding",
+  "rust-test:tests/channel_binding.rs::every_one_bit_tls_exporter_mutation_fails_before_authentication",
+  "rust-test:tests/channel_binding.rs::plus_gs2_header_mutation_fails_before_proof_verification",
+  "rust-test:tests/channel_binding.rs::negotiation_downgrades_and_wrong_binding_types_fail_before_lookup",
+  "rust-test:tests/channel_binding.rs::client_and_server_recheck_per_connection_binding_limit",
+  "rust-test:tests/postgres_interop.rs::postgres_tls_server_end_point_matches_independent_fixed_vector",
+  "rust-test:tests/sha512_state.rs::sha512_plus_loopback_authenticates_both_roles",
+  "rust-test:tests/message_encoding.rs::plus_encoding_uses_exact_escaped_gs2_header_and_binding_data",
+  "gate:fuzz-check",
+  "gate:fuzz",
+  "gate:check",
+  "gate:security",
+]
+
+[[invariant]]
+id = "CONCEAL-01"
+title = "Unknown identities complete proof work without a principal or distinct wire error"
+status = "enforced"
+document = "README.md#server"
+evidence = [
+  "rust-test:tests/server_credential.rs::synthetic_credentials_are_deterministic_identity_bound_and_domain_separated",
+  "rust-test:tests/server_state.rs::invalid_proof_and_unknown_user_emit_the_same_failure_without_a_principal",
+  "gate:fuzz-check",
+  "gate:fuzz",
+  "gate:check",
+  "gate:security",
+]
+
+[[invariant]]
+id = "PREPARATION-01"
+title = "Credential profiles preserve RFC 5802 query and stored-string semantics"
+status = "enforced"
+document = "README.md#mechanisms"
+evidence = [
+  "rust-test:tests/preparation_profiles.rs::rfc4013_mapping_normalization_and_bidi_rules_apply",
+  "rust-test:tests/preparation_profiles.rs::passwords_reject_unicode_3_2_unassigned_code_points_before_normalization",
+  "rust-test:tests/preparation_profiles.rs::bidirectional_checks_use_unicode_3_2_properties",
+  "rust-test:tests/server_authorization.rs::received_identities_require_explicit_profile_preparation",
+  "rust-test:tests/public_api.rs::query_preparation_uses_unicode_3_2_assignment_boundaries",
+  "rust-test:tests/public_api.rs::rfc5802_distinguishes_query_and_stored_string_preparation",
+  "gate:check",
+]
+
+[dependencies]
+mode = "locked"
+unassigned_packages = "deny"
+cycles = "deny"
+
+[[dependencies.crate_root]]
+package = "ctutils"
+root = "ctutils"
+reason = "Expected server signatures, recovered stored keys, and channel-binding components use RustCrypto constant-time equality."
+[dependencies.crate_root.source]
+kind = "registry"
+requirement = "0.4.2"
+
+[[dependencies.crate_root]]
+package = "hmac"
+root = "hmac"
+reason = "Client and server signatures, verifier keys, and synthetic credentials use RustCrypto HMAC behind zeroizing ownership."
+[dependencies.crate_root.source]
+kind = "registry"
+requirement = "0.13.0"
+
+[[dependencies.crate_root]]
+package = "pbkdf2"
+root = "pbkdf2"
+reason = "Explicit client-proof and server-verifier work boundaries use RustCrypto PBKDF2 without a public generic seam."
+[dependencies.crate_root.source]
+kind = "registry"
+requirement = "0.13.0"
+
+[[dependencies.crate_root]]
+package = "sha2"
+root = "sha2"
+reason = "SCRAM-SHA-256 and the opt-in SHA-512 extension use RustCrypto SHA-2 implementations behind private modules."
+[dependencies.crate_root.source]
+kind = "registry"
+requirement = "0.11.0"
+
+[[dependencies.crate_root]]
+package = "stringprep"
+root = "stringprep"
+reason = "The optional RFC 5802 profile uses the crate's audited RFC 3454 character tables."
+[dependencies.crate_root.source]
+kind = "registry"
+requirement = "0.1.5"
+
+[[dependencies.crate_root]]
+package = "unicode-normalization"
+root = "unicode_normalization"
+reason = "RFC 5802 query-string preparation applies Unicode 3.2 NFKC while permitting unassigned code points."
+[dependencies.crate_root.source]
+kind = "registry"
+requirement = "0.1.25"
+
+[[dependencies.crate_root]]
+package = "zeroize"
+root = "zeroize"
+reason = "Owned secret wrappers use zeroize for no-std-compatible drop clearing."
+[dependencies.crate_root.source]
+kind = "registry"
+requirement = "1.9.0"
+
+[source.rust]
+module_docs = "required"
+facades = "declarative"
+entrypoints = "declarative"
+tests = "sibling"
+
+[source.rust.macros]
+mode = "deny-unreviewed"
+
+[[source.rust.macros.allow]]
+name = "Clone"
+reason = "Non-secret value types use Rust's built-in Clone derive."
+
+[[source.rust.macros.allow]]
+name = "Copy"
+reason = "Small non-secret policy and parser view types use Rust's built-in Copy derive."
+
+[[source.rust.macros.allow]]
+name = "Debug"
+reason = "Non-secret values use built-in Debug; secret-bearing values implement redacted formatting manually."
+
+[[source.rust.macros.allow]]
+name = "Default"
+reason = "Profiles and bounded policy aggregates use transparent built-in defaults."
+
+[[source.rust.macros.allow]]
+name = "Eq"
+reason = "Non-secret values use exact equality in policy and parser tests."
+
+[[source.rust.macros.allow]]
+name = "Ord"
+reason = "Iteration counts use built-in total ordering."
+
+[[source.rust.macros.allow]]
+name = "PartialEq"
+reason = "Non-secret values use exact equality in policy and parser tests."
+
+[[source.rust.macros.allow]]
+name = "PartialOrd"
+reason = "Iteration counts use built-in total ordering."
+
+[[source.rust.macros.allow]]
+name = "assert"
+reason = "Separate test targets assert public behavior and redaction."
+
+[[source.rust.macros.allow]]
+name = "assert_eq"
+reason = "Separate test targets compare bounded values and transcript slices."
+
+[[source.rust.macros.allow]]
+name = "format"
+reason = "Redaction tests and bounded conversation fuzzing inspect Debug output."
+
+[[source.rust.macros.allow]]
+name = "matches"
+reason = "Production validation and tests use standard pattern matching without expansion authority."
+
+[source.rust.hygiene]
+unsafe = "deny"
+lint_suppressions = "deny"
+deny_methods = ["unwrap", "expect"]
+deny_macros = ["panic", "todo", "unimplemented", "unreachable", "dbg"]
+
+[source.rust.size.facade]
+target = 80
+hard = 120
+
+[source.rust.size.implementation]
+target = 240
+hard = 300
+
+[source.rust.size.test]
+target = 300
+hard = 300
+
+[source.rust.size.auxiliary]
+target = 300
+hard = 300
+
+[[layer]]
+name = "library"
+packages = ["sasl-scram"]
+may_depend_on = []
+reason = "One focused protocol library with no internal package graph."
+
+[layer.dependencies]
+external = "locked"
+
+[[scope]]
+name = "sans-io-core"
+include = ["src/**"]
+exclude = []
+reason = "The protocol core never acquires process capabilities."
+
+[scope.symbols]
+deny = ["std::fs", "std::net", "std::process", "std::thread"]
