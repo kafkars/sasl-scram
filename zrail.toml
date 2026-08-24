@@ -12,7 +12,7 @@ symlinks = "inside"
 [[gate]]
 name = "check"
 kind = "local"
-path = "scripts/check"
+path = "zcheck.toml"
 inputs = [
   "scripts/examples-check",
   "scripts/fuzz-check",
@@ -29,7 +29,7 @@ inputs = [
   "Cargo.lock",
   "README.md",
 ]
-reason = "The repository's canonical local qualification entrypoint."
+reason = "The repository's canonical local qualification graph and substantive leaf programs."
 
 [[invariant]]
 id = "PUBLIC-API-01"
@@ -50,7 +50,7 @@ kind = "ci"
 path = ".github/workflows/ci.yml"
 inputs = [".github/actions/setup-rust/action.yml"]
 requires = ["check"]
-reason = "Hosted qualification runs the canonical gate, portable tests, and the MSRV check."
+reason = "Hosted qualification installs zcheck, runs the canonical graph, and retains portable and MSRV checks."
 
 [[gate]]
 name = "fuzz-check"

@@ -2,7 +2,7 @@
 schema = 1
 semantics = 2
 producer = "0.0.2"
-contract_sha256 = "7eb1449e3f16f02fa40498b201aef5dfec4f895dbb22374bb7a7c62d27ec6e33"
+contract_sha256 = "ce03f1c38b970ec86a05f80aef3db8f81ae9306170702611b25d52f765b5c1a4"
 ratchet = []
 
 [[package]]
@@ -105,8 +105,8 @@ requirement = "1.9.0"
 
 [[gate]]
 name = "check"
-path = "scripts/check"
-sha256 = "05c67f5800c530f78f84de1bb4bcf33b088be2459fe4bf44dc5a2931d27d3337"
+path = "zcheck.toml"
+sha256 = "002fd19c390c08141741ef57bbdbf7299de320409b3d4a72b17eb64cee9e170e"
 
 [[gate.input]]
 path = "Cargo.lock"
@@ -118,7 +118,7 @@ sha256 = "7ed91f1f1ff0b2e9cc53b71d050b79e1dac36a53026f407d45d9ff91a2cc23ad"
 
 [[gate.input]]
 path = "README.md"
-sha256 = "edb4a26d3ae0bba89b315c25d3cb0fc5b13b2402448b3cd480c0e670da49b14a"
+sha256 = "12e1f16a0abf1a0232b7535fb8d54a44c3d327f5ed2b81a205815070dbb6c7e4"
 
 [[gate.input]]
 path = "clippy.toml"
@@ -158,7 +158,7 @@ sha256 = "c261c862eeaa18205c8238d8b2f6bad7a5bb26a80c3c85bd7aee82d24e2aab9f"
 
 [[gate.input]]
 path = "scripts/guardrails.py"
-sha256 = "59d496e856fd00e1eda7d8b68ef8bf2fef9366c1d9abacbb096b0e39345d9a56"
+sha256 = "14b2de7d7016c7fb0c6fa173f8c901854ce9938c77c17d01230640e93aa8d42f"
 
 [[gate.input]]
 path = "scripts/package-check"
@@ -167,7 +167,7 @@ sha256 = "b0d8562871105f9da7ebaa61d812680dd31859c3ffe203066294e66f987ccbbf"
 [[gate]]
 name = "ci"
 path = ".github/workflows/ci.yml"
-sha256 = "08f3c251b1c8a4f1b7519e0b8e0c69be73c319970239d20af6510f0a6ffa445a"
+sha256 = "6bd57f4614b4aa24741bd7bbc1af0adc669cf35d26d7b060403261cf2ac8a3ee"
 
 [[gate.input]]
 path = ".github/actions/setup-rust/action.yml"

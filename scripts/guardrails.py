@@ -131,7 +131,6 @@ def required_files(checks: Checks) -> None:
         "fuzz/fuzz_targets/server_final.rs",
         "fuzz/fuzz_targets/server_first.rs",
         "rust-toolchain.toml",
-        "scripts/check",
         "scripts/examples-check",
         "scripts/fuzz-check",
         "scripts/generate-unicode32-bidi.py",
@@ -164,6 +163,7 @@ def required_files(checks: Checks) -> None:
         "tests/server_state.rs",
         "tests/sha512_state.rs",
         "tests/transcript_preservation.rs",
+        "zcheck.toml",
         "zrail.lock",
         "zrail.toml",
     ]
@@ -228,8 +228,8 @@ def check_manifest(checks: Checks) -> None:
 
 def check_repository(checks: Checks) -> None:
     checks.require(not (ROOT / ".gitmodules").exists(), "Git submodules are not permitted")
+    checks.require(not (ROOT / "scripts/check").exists(), "zcheck must own qualification orchestration")
     for name in [
-        "scripts/check",
         "scripts/examples-check",
         "scripts/fuzz-check",
         "scripts/generate-unicode32-bidi.py",
@@ -245,6 +245,14 @@ def check_repository(checks: Checks) -> None:
     checks.require("__pycache__/" in gitignore, "Python bytecode directories must be ignored")
     checks.require("*.pyc" in gitignore, "Python bytecode files must be ignored")
     ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    checks.require(
+        "cargo install zcheck --version 0.0.1 --locked" in ci,
+        "CI must install the exact zcheck release",
+    )
+    checks.require(
+        "run: zcheck run check --format github" in ci,
+        "CI must run the canonical zcheck graph",
+    )
     _, msrv_separator, msrv_job = ci.partition("\n  msrv:\n")
     checks.require(bool(msrv_separator), "CI must define an MSRV job")
     checks.require('name: MSRV (Rust 1.88)' in msrv_job, "CI must name the Rust 1.88 MSRV")

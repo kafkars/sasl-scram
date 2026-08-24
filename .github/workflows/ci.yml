@@ -47,6 +47,7 @@ jobs:
       - name: Install qualification tools
         run: |
           cargo install cargo-deny --version 0.20.2 --locked
+          cargo install zcheck --version 0.0.1 --locked
           cargo install zrail --git https://github.com/zsumz/zrail.git --rev 0392168aedc32f493a53e7d954684e201c882c3c --locked
 
       - name: Fetch locked dependencies
@@ -55,7 +56,7 @@ jobs:
           cargo fetch --manifest-path fuzz/Cargo.toml --locked
 
       - name: Run canonical gate
-        run: scripts/check
+        run: zcheck run check --format github
 
   portable:
     name: test (${{ matrix.os }})

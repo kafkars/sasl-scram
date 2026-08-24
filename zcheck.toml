@@ -1,0 +1,146 @@
+schema = 1
+default = "check"
+
+[execution]
+jobs = 4
+default_timeout = "20m"
+repository_state = "preserve"
+
+[tasks.python]
+description = "Compile repository qualification programs."
+run = ["python3", "-m", "py_compile", "scripts/guardrails.py", "scripts/generate-unicode32-bidi.py"]
+tools = ["python3"]
+inputs = ["scripts/guardrails.py", "scripts/generate-unicode32-bidi.py"]
+
+[tasks.guardrails]
+description = "Enforce fail-closed repository source rules."
+run = ["scripts/guardrails.py"]
+tools = ["python3"]
+inputs = ["scripts/guardrails.py"]
+
+[tasks.unicode-bidi]
+description = "Verify the checked-in Unicode 3.2 bidirectional tables."
+run = ["python3", "scripts/generate-unicode32-bidi.py", "--check"]
+tools = ["python3"]
+inputs = ["scripts/generate-unicode32-bidi.py", "src/saslprep/unicode32_bidi.rs"]
+
+[tasks.zrail]
+description = "Enforce the reviewed architecture policy."
+run = ["zrail", "check"]
+tools = ["zrail"]
+inputs = ["zrail.toml", "zrail.lock"]
+
+[tasks.git-diff]
+description = "Reject whitespace errors in unstaged changes."
+run = ["git", "diff", "--check"]
+tools = ["git"]
+
+[tasks.git-diff-cached]
+description = "Reject whitespace errors in staged changes."
+run = ["git", "diff", "--cached", "--check"]
+tools = ["git"]
+
+[tasks.architecture]
+description = "Validate source shape, architecture policy, and diff hygiene."
+needs = ["python", "guardrails", "unicode-bidi", "zrail", "git-diff", "git-diff-cached"]
+
+[tasks.format]
+description = "Validate Rust formatting."
+run = ["cargo", "fmt", "--all", "--", "--check"]
+tools = ["cargo"]
+resources = ["cargo-target"]
+
+[tasks.clippy-all-features]
+description = "Run Clippy across every target and feature."
+run = ["cargo", "clippy", "--workspace", "--all-targets", "--all-features", "--locked", "--offline", "--", "-D", "warnings"]
+tools = ["cargo"]
+resources = ["cargo-target"]
+
+[tasks.clippy-sha256]
+description = "Run Clippy for the standalone SHA-256 feature."
+run = ["cargo", "clippy", "--workspace", "--all-targets", "--no-default-features", "--features", "sha256", "--locked", "--offline", "--", "-D", "warnings"]
+tools = ["cargo"]
+resources = ["cargo-target"]
+
+[tasks.clippy-sha512]
+description = "Run Clippy for the standalone SHA-512 feature."
+run = ["cargo", "clippy", "--workspace", "--all-targets", "--no-default-features", "--features", "sha512", "--locked", "--offline", "--", "-D", "warnings"]
+tools = ["cargo"]
+resources = ["cargo-target"]
+
+[tasks.fuzz]
+description = "Validate every fuzz target under the pinned dependency graph."
+run = ["scripts/fuzz-check"]
+tools = ["bash", "cargo"]
+resources = ["cargo-target"]
+inputs = ["scripts/fuzz-check", "fuzz/Cargo.toml", "fuzz/Cargo.lock", "fuzz/deny.toml"]
+
+[tasks.docs]
+description = "Build workspace documentation with warnings denied."
+run = ["cargo", "doc", "--workspace", "--all-features", "--no-deps", "--locked", "--offline"]
+env = { RUSTDOCFLAGS = "-D warnings" }
+tools = ["cargo"]
+resources = ["cargo-target"]
+
+[tasks.dependencies]
+description = "Enforce dependency bans, licenses, and sources."
+run = ["cargo", "deny", "check", "bans", "licenses", "sources"]
+tools = ["cargo"]
+resources = ["cargo-target"]
+inputs = ["Cargo.toml", "Cargo.lock", "deny.toml"]
+
+[tasks.rust-lint]
+description = "Validate formatting, lints, fuzz targets, documentation, and dependencies."
+needs = ["format", "clippy-all-features", "clippy-sha256", "clippy-sha512", "fuzz", "docs", "dependencies"]
+
+[tasks.test-default]
+description = "Test the default feature set."
+run = ["cargo", "test", "--workspace", "--locked", "--offline"]
+tools = ["cargo"]
+resources = ["cargo-target"]
+
+[tasks.test-all-features]
+description = "Test the complete feature set."
+run = ["cargo", "test", "--workspace", "--all-features", "--locked", "--offline"]
+tools = ["cargo"]
+resources = ["cargo-target"]
+
+[tasks.test-no-default-features]
+description = "Test without default features."
+run = ["cargo", "test", "--workspace", "--no-default-features", "--locked", "--offline"]
+tools = ["cargo"]
+resources = ["cargo-target"]
+
+[tasks.test-sha256]
+description = "Test the standalone SHA-256 feature."
+run = ["cargo", "test", "--workspace", "--no-default-features", "--features", "sha256", "--locked", "--offline"]
+tools = ["cargo"]
+resources = ["cargo-target"]
+
+[tasks.test-sha512]
+description = "Test the standalone SHA-512 feature."
+run = ["cargo", "test", "--workspace", "--no-default-features", "--features", "sha512", "--locked", "--offline"]
+tools = ["cargo"]
+resources = ["cargo-target"]
+
+[tasks.examples]
+description = "Run the public reference applications."
+run = ["scripts/examples-check"]
+tools = ["bash", "cargo"]
+resources = ["cargo-target"]
+inputs = ["scripts/examples-check"]
+
+[tasks.rust-test]
+description = "Validate every supported feature matrix and reference application."
+needs = ["test-default", "test-all-features", "test-no-default-features", "test-sha256", "test-sha512", "examples"]
+
+[tasks.package]
+description = "Verify the publishable crate archive and extracted consumers."
+run = ["scripts/package-check"]
+tools = ["bash", "cargo", "python3", "tar", "grep", "cmp", "mktemp"]
+resources = ["cargo-target"]
+inputs = ["scripts/package-check", "Cargo.toml", "Cargo.lock"]
+
+[tasks.check]
+description = "Run complete local sasl-scram qualification."
+needs = ["architecture", "rust-lint", "rust-test", "package"]

@@ -167,13 +167,14 @@ protocol material.
 ## Qualification
 
 ```sh
-scripts/check
+zcheck
 ```
 
-The canonical gate enforces repository architecture, formatting, strict Clippy,
-the default and complete feature matrices, independent SHA-256 and SHA-512
-`no_std + alloc` builds, tests, examples, every fuzz target, warning-free
-rustdoc, dependency policy, package contents, and the zrail lock.
+The schema-1 zcheck graph is the canonical gate for repository architecture,
+formatting, strict Clippy, the default and complete feature matrices,
+independent SHA-256 and SHA-512 `no_std + alloc` builds, tests, examples, every
+fuzz target, warning-free rustdoc, dependency policy, package contents, and the
+zrail lock.
 
 ## Scope
 
