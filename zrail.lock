@@ -106,7 +106,7 @@ requirement = "1.9.0"
 [[gate]]
 name = "check"
 path = "zcheck.toml"
-sha256 = "002fd19c390c08141741ef57bbdbf7299de320409b3d4a72b17eb64cee9e170e"
+sha256 = "c1c57585ae5320bab6ce4def72e59c1b522eaf0972b4cb586b2be6ae91c79b25"
 
 [[gate.input]]
 path = "Cargo.lock"
@@ -158,7 +158,7 @@ sha256 = "c261c862eeaa18205c8238d8b2f6bad7a5bb26a80c3c85bd7aee82d24e2aab9f"
 
 [[gate.input]]
 path = "scripts/guardrails.py"
-sha256 = "f81059adffac7c96ea74875aaf28d904f51c99ebe81392c88e62325e1f9a59bb"
+sha256 = "72d7375d44a626b37a7f09c2e285ef6e6a95be2ddce2dbe41163a43f4c65fc5a"
 
 [[gate.input]]
 path = "scripts/package-check"

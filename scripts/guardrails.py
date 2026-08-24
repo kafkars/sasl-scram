@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
-"""Repository structure and hygiene checks that do not require Rust."""
+"""Repository contracts that are not modeled by zrail."""
 
 from __future__ import annotations
 
 import re
-import stat
 import sys
 import tomllib
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-MAX_RUST_LINES = 300
-MAX_FACADE_LINES = 120
 SECRET_OWNER_TYPES = {
     "src/secret.rs": ["SecretBytes", "SecretString"],
     "src/credentials.rs": ["PreparedPassword", "PreparedCredentials"],
@@ -38,7 +35,7 @@ SECRET_OWNER_TYPES = {
     "src/server/client_first.rs": ["NeedCredential"],
     "src/server/identity_preparation.rs": ["NeedIdentityPreparation"],
 }
-ZEROIZING_REDACTED_TYPES = {
+PREPARED_IDENTITY_TYPES = {
     "src/identity.rs": [
         "PreparedAuthenticationIdentity",
         "PreparedAuthorizationIdentity",
@@ -64,18 +61,6 @@ FORBIDDEN_SECRET_TRAITS = {
     "PartialOrd",
     "Serialize",
 }
-TEXT_SUFFIXES = {
-    ".lock",
-    ".md",
-    ".py",
-    ".rs",
-    ".sh",
-    ".toml",
-    ".txt",
-    ".yaml",
-    ".yml",
-}
-TEXT_FILENAMES = {"check", "examples-check", "fuzz-check", "package-check"}
 
 
 class Checks:
@@ -88,16 +73,12 @@ class Checks:
 
     def finish(self) -> int:
         if self.failures:
-            print("guardrails failed:", file=sys.stderr)
+            print("repository policy failed:", file=sys.stderr)
             for failure in self.failures:
                 print(f"  - {failure}", file=sys.stderr)
             return 1
-        print("guardrails passed")
+        print("repository policy passed")
         return 0
-
-
-def relative(path: Path) -> str:
-    return path.relative_to(ROOT).as_posix()
 
 
 def load_toml(path: Path) -> dict[str, Any]:
@@ -105,77 +86,12 @@ def load_toml(path: Path) -> dict[str, Any]:
         return tomllib.load(source)
 
 
-def required_files(checks: Checks) -> None:
-    names = [
-        ".github/actions/setup-rust/action.yml",
-        ".github/workflows/ci.yml",
-        ".github/workflows/fuzz.yml",
-        ".github/workflows/security.yml",
-        "Cargo.lock",
-        "Cargo.toml",
-        "LICENSE",
-        "README.md",
-        "deny.toml",
-        "examples/continuation_server.rs",
-        "examples/scram_sha256_client.rs",
-        "examples/scram_sha512_plus.rs",
-        "examples/support/error.rs",
-        "examples/support/mod.rs",
-        "examples/support/nonce.rs",
-        "fuzz/Cargo.lock",
-        "fuzz/Cargo.toml",
-        "fuzz/deny.toml",
-        "fuzz/fuzz_targets/client_final.rs",
-        "fuzz/fuzz_targets/client_first.rs",
-        "fuzz/fuzz_targets/conversation.rs",
-        "fuzz/fuzz_targets/server_final.rs",
-        "fuzz/fuzz_targets/server_first.rs",
-        "rust-toolchain.toml",
-        "scripts/examples-check",
-        "scripts/fuzz-check",
-        "scripts/generate-unicode32-bidi.py",
-        "scripts/guardrails.py",
-        "scripts/package-check",
-        "src/authentication.rs",
-        "src/crypto/dispatch.rs",
-        "src/crypto/sha512.rs",
-        "src/identity.rs",
-        "src/lib.rs",
-        "src/policy_error.rs",
-        "src/saslprep.rs",
-        "src/saslprep/unicode32_bidi.rs",
-        "src/salt.rs",
-        "src/server/identity_preparation.rs",
-        "tests/channel_binding.rs",
-        "tests/hostile_messages.rs",
-        "tests/client_state.rs",
-        "tests/identity_properties.rs",
-        "tests/kafka_sha512.rs",
-        "tests/message_encoding.rs",
-        "tests/preparation_profiles.rs",
-        "tests/postgres_interop.rs",
-        "tests/public_api.rs",
-        "tests/rfc7677.rs",
-        "tests/secret_safety.rs",
-        "tests/server_authorization.rs",
-        "tests/server_credential.rs",
-        "tests/server_policy.rs",
-        "tests/server_state.rs",
-        "tests/sha512_state.rs",
-        "tests/transcript_preservation.rs",
-        "zcheck.toml",
-        "zrail.lock",
-        "zrail.toml",
-    ]
-    for name in names:
-        checks.require((ROOT / name).is_file(), f"missing required file {name}")
-
-
 def check_manifest(checks: Checks) -> None:
     manifest = load_toml(ROOT / "Cargo.toml")
     package = manifest.get("package", {})
     workspace = manifest.get("workspace", {})
     metadata = workspace.get("package", {})
+
     checks.require(workspace.get("resolver") == "3", "workspace resolver must be 3")
     checks.require(package.get("name") == "sasl-scram", "package name drift")
     checks.require(
@@ -189,6 +105,7 @@ def check_manifest(checks: Checks) -> None:
         metadata.get("repository") == "https://github.com/kafkars/sasl-scram",
         "repository metadata drift",
     )
+
     features = manifest.get("features", {})
     checks.require(
         features.get("default") == ["std", "sha256", "saslprep"],
@@ -206,44 +123,22 @@ def check_manifest(checks: Checks) -> None:
             unavailable not in features,
             f"unimplemented feature must not be advertised: {unavailable}",
         )
-    for forbidden in ["tokio", "async-std", "rustls", "openssl", "serde", "tracing"]:
-        checks.require(forbidden not in features, f"forbidden adapter feature {forbidden}")
-    dependency_tables = [
-        workspace.get("dependencies", {}),
-        manifest.get("dependencies", {}),
-        manifest.get("dev-dependencies", {}),
-        manifest.get("build-dependencies", {}),
-    ]
-    serde_dependencies = [
-        name
-        for dependencies in dependency_tables
-        for name, specification in dependencies.items()
-        if name == "serde"
-        or (isinstance(specification, dict) and specification.get("package") == "serde")
-    ]
-    checks.require(not serde_dependencies, "serde dependencies are not permitted")
-    rust_lints = workspace.get("lints", {}).get("rust", {})
-    checks.require(rust_lints.get("unsafe_code") == "forbid", "unsafe code must be forbidden")
+    for adapter in ["tokio", "async-std", "rustls", "openssl", "serde", "tracing"]:
+        checks.require(adapter not in features, f"adapter feature is not permitted: {adapter}")
 
 
-def check_repository(checks: Checks) -> None:
-    checks.require(not (ROOT / ".gitmodules").exists(), "Git submodules are not permitted")
-    checks.require(not (ROOT / "scripts/check").exists(), "zcheck must own qualification orchestration")
-    for name in [
-        "scripts/examples-check",
-        "scripts/fuzz-check",
-        "scripts/generate-unicode32-bidi.py",
-        "scripts/guardrails.py",
-        "scripts/package-check",
-    ]:
-        path = ROOT / name
-        if path.exists():
-            checks.require(bool(path.stat().st_mode & stat.S_IXUSR), f"{name} must be executable")
+def check_repository_contract(checks: Checks) -> None:
+    checks.require(
+        not (ROOT / "scripts/check").exists(),
+        "zcheck must own qualification orchestration",
+    )
     for name in [".cargo/config", ".cargo/config.toml", ".cargo/audit.toml"]:
         checks.require(not (ROOT / name).exists(), f"repository-local Cargo config: {name}")
+
     gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
     checks.require("__pycache__/" in gitignore, "Python bytecode directories must be ignored")
     checks.require("*.pyc" in gitignore, "Python bytecode files must be ignored")
+
     ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     checks.require(
         "cargo install zcheck --version 0.0.1 --locked" in ci,
@@ -264,6 +159,7 @@ def check_repository(checks: Checks) -> None:
         "cargo test --workspace --all-features --locked --offline" in msrv_job,
         "CI MSRV job must test the supported crate",
     )
+
     fuzz = (ROOT / ".github/workflows/fuzz.yml").read_text(encoding="utf-8")
     checks.require('cron: "37 5 * * 1"' in fuzz, "hosted fuzzing must run weekly")
     checks.require(
@@ -278,73 +174,7 @@ def check_repository(checks: Checks) -> None:
     checks.require("-max_len=32768" in fuzz, "hosted fuzzing must cross message limits")
 
 
-def text_files() -> list[Path]:
-    roots = [
-        ROOT / "src",
-        ROOT / "tests",
-        ROOT / "examples",
-        ROOT / "scripts",
-        ROOT / ".github",
-        ROOT / "fuzz",
-    ]
-    files = [
-        ROOT / "Cargo.toml",
-        ROOT / "README.md",
-        ROOT / "deny.toml",
-        ROOT / "rust-toolchain.toml",
-        ROOT / "rustfmt.toml",
-        ROOT / "clippy.toml",
-        ROOT / ".gitignore",
-    ]
-    for root in roots:
-        files.extend(
-            path
-            for path in root.rglob("*")
-            if path.is_file()
-            and not {"__pycache__", "artifacts", "corpus", "target"}.intersection(
-                path.relative_to(root).parts
-            )
-            and (path.suffix in TEXT_SUFFIXES or path.name in TEXT_FILENAMES)
-        )
-    return sorted(set(files))
-
-
-def check_text(checks: Checks) -> None:
-    for path in text_files():
-        text = path.read_text(encoding="utf-8")
-        name = relative(path)
-        checks.require(text.endswith("\n"), f"{name} must end with a newline")
-        for number, line in enumerate(text.splitlines(), start=1):
-            checks.require("\t" not in line, f"{name}:{number} contains a tab")
-            checks.require(line == line.rstrip(), f"{name}:{number} has trailing whitespace")
-
-
-def check_rust(checks: Checks) -> None:
-    rust_files = sorted((ROOT / "src").rglob("*.rs"))
-    rust_files.extend(sorted((ROOT / "examples").rglob("*.rs")))
-    facades = {ROOT / "src/lib.rs", ROOT / "src/message.rs"}
-    forbidden = {
-        r"\bunsafe\b": "unsafe code",
-        r"\.unwrap\s*\(": "unwrap",
-        r"\.expect\s*\(": "expect",
-        r"\bpanic!\s*\(": "panic",
-        r"\btodo!\s*\(": "todo",
-        r"\bunimplemented!\s*\(": "unimplemented",
-        r"\bunreachable!\s*\(": "unreachable",
-        r"\bdbg!\s*\(": "dbg",
-        r"#\s*\[\s*allow\s*\(": "lint suppression",
-        r"#\s*\[\s*cfg\s*\(\s*test": "production test module",
-        r"^\s*pub\s+use\s+.*::\*": "wildcard public re-export",
-    }
-    for path in rust_files:
-        text = path.read_text(encoding="utf-8")
-        lines = text.splitlines()
-        name = relative(path)
-        limit = MAX_FACADE_LINES if path in facades else MAX_RUST_LINES
-        checks.require(len(lines) <= limit, f"{name} has {len(lines)} lines; limit is {limit}")
-        checks.require(bool(lines) and lines[0].startswith("//!"), f"{name} needs module docs")
-        for pattern, label in forbidden.items():
-            checks.require(re.search(pattern, text, re.MULTILINE) is None, f"{name} contains {label}")
+def check_public_api_contract(checks: Checks) -> None:
     for name in ["src/client/config.rs", "src/server/config.rs"]:
         text = (ROOT / name).read_text(encoding="utf-8")
         checks.require(
@@ -357,106 +187,76 @@ def check_rust(checks: Checks) -> None:
         )
 
 
-def check_secret_surfaces(checks: Checks) -> None:
-    def reject_traits(path: Path, type_name: str, forbidden: set[str]) -> None:
-        text = path.read_text(encoding="utf-8")
+def reject_traits(
+    checks: Checks,
+    path: Path,
+    type_name: str,
+    forbidden: set[str],
+) -> None:
+    text = path.read_text(encoding="utf-8")
+    checks.require(
+        re.search(rf"pub\s+(?:struct|enum)\s+{type_name}\b", text) is not None,
+        f"{path.relative_to(ROOT).as_posix()} is missing guarded type {type_name}",
+    )
+
+    derive = re.search(
+        rf"#\s*\[\s*derive\s*\((?P<traits>[^)]*)\)\s*\]\s*"
+        rf"(?:#\s*\[[^]]*\]\s*)*pub\s+(?:struct|enum)\s+{type_name}\b",
+        text,
+        re.MULTILINE,
+    )
+    if derive:
+        derived = {
+            item.strip().split("::")[-1]
+            for item in derive.group("traits").split(",")
+        }
         checks.require(
-            re.search(rf"pub\s+(?:struct|enum)\s+{type_name}\b", text) is not None,
-            f"{relative(path)} is missing guarded type {type_name}",
+            not derived.intersection(forbidden.union({"Debug"})),
+            f"{path.relative_to(ROOT).as_posix()} derives a forbidden trait for {type_name}",
         )
-        derive = re.search(
-            rf"#\s*\[\s*derive\s*\((?P<traits>[^)]*)\)\s*\]\s*"
-            rf"(?:#\s*\[[^]]*\]\s*)*pub\s+(?:struct|enum)\s+{type_name}\b",
+
+    for trait in sorted(forbidden):
+        implementation = re.search(
+            rf"impl(?:\s*<[^{{}}]*>)?\s+"
+            rf"(?:[A-Za-z_][A-Za-z0-9_]*::)*{trait}(?:\s*<[^{{}}]*>)?\s+"
+            rf"for\s+{type_name}\b",
             text,
             re.MULTILINE,
         )
-        if derive:
-            derived = {
-                item.strip().split("::")[-1]
-                for item in derive.group("traits").split(",")
-            }
-            checks.require(
-                not derived.intersection(forbidden.union({"Debug"})),
-                f"{relative(path)} derives a forbidden trait for {type_name}",
-            )
-        for trait in sorted(forbidden):
-            implementation = re.search(
-                rf"impl(?:\s*<[^{{}}]*>)?\s+"
-                rf"(?:[A-Za-z_][A-Za-z0-9_]*::)*{trait}(?:\s*<[^{{}}]*>)?\s+"
-                rf"for\s+{type_name}\b",
-                text,
-                re.MULTILINE,
-            )
-            checks.require(
-                implementation is None,
-                f"{relative(path)} implements forbidden {trait} for {type_name}",
-            )
+        checks.require(
+            implementation is None,
+            f"{path.relative_to(ROOT).as_posix()} implements forbidden {trait} for {type_name}",
+        )
 
+
+def check_secret_surfaces(checks: Checks) -> None:
     for name, type_names in SECRET_OWNER_TYPES.items():
-        path = ROOT / name
-        text = path.read_text(encoding="utf-8")
         for type_name in type_names:
-            reject_traits(path, type_name, FORBIDDEN_SECRET_TRAITS)
-            checks.require(
-                re.search(
-                    rf"impl(?:\s*<[^{{}}]*>)?\s+ZeroizeOnDrop\s+for\s+{type_name}\b",
-                    text,
-                )
-                is not None,
-                f"{name} does not guarantee zeroize-on-drop for {type_name}",
-            )
-            checks.require(
-                re.search(
-                    rf"impl(?:\s*<[^{{}}]*>)?\s+(?:fmt::)?Debug\s+for\s+{type_name}\b",
-                    text,
-                )
-                is not None,
-                f"{name} does not manually redact Debug for {type_name}",
-            )
-    for name, type_names in ZEROIZING_REDACTED_TYPES.items():
-        path = ROOT / name
-        text = path.read_text(encoding="utf-8")
+            reject_traits(checks, ROOT / name, type_name, FORBIDDEN_SECRET_TRAITS)
+
+    prepared_forbidden = {"Clone", "Copy", "Deserialize", "Display", "Serialize"}
+    for name, type_names in PREPARED_IDENTITY_TYPES.items():
         for type_name in type_names:
-            reject_traits(path, type_name, {"Clone", "Copy", "Deserialize", "Display", "Serialize"})
-            checks.require(
-                re.search(rf"impl\s+ZeroizeOnDrop\s+for\s+{type_name}\b", text) is not None,
-                f"{name} does not guarantee zeroize-on-drop for {type_name}",
-            )
-            checks.require(
-                re.search(rf"impl\s+(?:fmt::)?Debug\s+for\s+{type_name}\b", text) is not None,
-                f"{name} does not manually redact Debug for {type_name}",
-            )
+            reject_traits(checks, ROOT / name, type_name, prepared_forbidden)
+
+    generic_forbidden = FORBIDDEN_SECRET_TRAITS.union({"ZeroizeOnDrop"})
     for name, type_names in GENERIC_ORCHESTRATION_TYPES.items():
-        path = ROOT / name
-        text = path.read_text(encoding="utf-8")
         for type_name in type_names:
-            reject_traits(path, type_name, FORBIDDEN_SECRET_TRAITS)
-            checks.require(
-                re.search(
-                    rf"impl(?:\s*<[^{{}}]*>)?\s+ZeroizeOnDrop\s+for\s+{type_name}\b",
-                    text,
-                )
-                is None,
-                f"{name} overstates zeroize-on-drop for generic {type_name}",
-            )
-            checks.require(
-                re.search(
-                    rf"impl(?:\s*<[^{{}}]*>)?\s+(?:fmt::)?Debug\s+for\s+{type_name}\b",
-                    text,
-                )
-                is not None,
-                f"{name} does not manually redact Debug for {type_name}",
-            )
+            reject_traits(checks, ROOT / name, type_name, generic_forbidden)
+
     reject_traits(
+        checks,
         ROOT / "src/message/server_final.rs",
         "ServerFinalOutcome",
         {"Eq", "Hash", "Ord", "PartialEq", "PartialOrd"},
     )
     reject_traits(
+        checks,
         ROOT / "src/message/server_final.rs",
         "ServerVerifier",
         {"Display", "Eq", "Hash", "Ord", "PartialEq", "PartialOrd"},
     )
+
     error_text = (ROOT / "src/error.rs").read_text(encoding="utf-8")
     checks.require(
         re.search(r"\b(?:Box|String|Vec)\s*<|&\s*(?:str|\[u8\])", error_text) is None,
@@ -464,29 +264,12 @@ def check_secret_surfaces(checks: Checks) -> None:
     )
 
 
-def check_tests(checks: Checks) -> None:
-    source_tests = sorted((ROOT / "src").rglob("*_test.rs"))
-    checks.require(not source_tests, "tests must remain outside production source files")
-    for path in sorted((ROOT / "tests").glob("*.rs")):
-        text = path.read_text(encoding="utf-8")
-        checks.require(text.startswith("//!"), f"{relative(path)} needs module docs")
-        checks.require(len(text.splitlines()) <= MAX_RUST_LINES, f"{relative(path)} exceeds 300 lines")
-
-    for path in sorted((ROOT / "fuzz/fuzz_targets").glob("*.rs")):
-        text = path.read_text(encoding="utf-8")
-        checks.require(text.startswith("//!"), f"{relative(path)} needs module docs")
-        checks.require(len(text.splitlines()) <= MAX_RUST_LINES, f"{relative(path)} exceeds 300 lines")
-
-
 def main() -> int:
     checks = Checks()
-    required_files(checks)
     check_manifest(checks)
-    check_repository(checks)
-    check_text(checks)
-    check_rust(checks)
+    check_repository_contract(checks)
+    check_public_api_contract(checks)
     check_secret_surfaces(checks)
-    check_tests(checks)
     return checks.finish()
 
 

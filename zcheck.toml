@@ -12,8 +12,8 @@ run = ["python3", "-m", "py_compile", "scripts/guardrails.py", "scripts/generate
 tools = ["python3"]
 inputs = ["scripts/guardrails.py", "scripts/generate-unicode32-bidi.py"]
 
-[tasks.guardrails]
-description = "Enforce fail-closed repository source rules."
+[tasks.repository-policy]
+description = "Enforce sasl-scram release, CI, API, and secret-surface contracts."
 run = ["scripts/guardrails.py"]
 tools = ["python3"]
 inputs = ["scripts/guardrails.py"]
@@ -42,7 +42,7 @@ tools = ["git"]
 
 [tasks.architecture]
 description = "Validate source shape, architecture policy, and diff hygiene."
-needs = ["python", "guardrails", "unicode-bidi", "zrail", "git-diff", "git-diff-cached"]
+needs = ["python", "repository-policy", "unicode-bidi", "zrail", "git-diff", "git-diff-cached"]
 
 [tasks.format]
 description = "Validate Rust formatting."
