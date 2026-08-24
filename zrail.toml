@@ -115,6 +115,7 @@ evidence = [
   "rust-test:tests/hostile_messages.rs::reserved_duplicates_are_rejected",
   "rust-test:tests/hostile_messages.rs::unsupported_mandatory_extensions_fail_in_every_extension_position",
   "rust-test:tests/hostile_messages.rs::noncanonical_base64_is_rejected",
+  "rust-test:tests/hostile_messages.rs::nonce_size_and_syntax_failures_remain_distinct",
   "rust-test:tests/hostile_messages.rs::server_final_must_contain_exactly_one_terminal_attribute",
   "gate:fuzz-check",
   "gate:fuzz",

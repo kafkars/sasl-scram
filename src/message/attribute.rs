@@ -166,8 +166,13 @@ pub(super) fn validate_value(value: &[u8]) -> Result<(), ProtocolError> {
 }
 
 pub(super) fn validate_nonce(value: &[u8], maximum: usize) -> Result<(), ProtocolError> {
+    if value.len() > maximum {
+        return Err(ProtocolError::NonceTooLarge {
+            length: value.len(),
+            maximum,
+        });
+    }
     if value.is_empty()
-        || value.len() > maximum
         || !value
             .iter()
             .all(|byte| (0x21..=0x7e).contains(byte) && *byte != b',')

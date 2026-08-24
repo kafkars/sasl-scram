@@ -49,7 +49,10 @@ fn combined_nonce_and_salt_limits_fail_before_randomness() -> Result<(), Error> 
     );
     assert!(matches!(
         result,
-        Err(Error::Protocol(ProtocolError::InvalidNonce))
+        Err(Error::Protocol(ProtocolError::NonceTooLarge {
+            length: 40,
+            maximum: 39,
+        }))
     ));
     assert!(!nonce.called);
 

@@ -63,6 +63,23 @@ fn malformed_identity_escapes_are_rejected() {
 }
 
 #[test]
+fn nonce_size_and_syntax_failures_remain_distinct() -> Result<(), sasl_scram::PolicyError> {
+    let limits = ResourceLimits::builder().max_nonce_bytes(4).build()?;
+    let oversized = ServerFirst::parse(b"r=nonce,s=,i=4096", &limits);
+    let malformed = ServerFirst::parse(b"r=no e,s=,i=4096", &limits);
+
+    assert_eq!(
+        oversized.err(),
+        Some(ProtocolError::NonceTooLarge {
+            length: 5,
+            maximum: 4,
+        })
+    );
+    assert_eq!(malformed.err(), Some(ProtocolError::InvalidNonce));
+    Ok(())
+}
+
+#[test]
 fn nul_identities_and_empty_extension_values_are_rejected() {
     let nul = ClientFirst::parse(b"n,,n=user\0name,r=nonce", &ResourceLimits::default());
     let empty_extension = ServerFirst::parse(

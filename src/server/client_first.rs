@@ -131,11 +131,14 @@ impl NeedCredential {
             return Err(PolicyError::InvalidCredential.into());
         }
         credential.validate(policy)?;
-        let Some(combined_length) = client_nonce.len().checked_add(ENCODED_NONCE_BYTES) else {
-            return Err(ProtocolError::InvalidNonce.into());
-        };
-        if combined_length > policy.resources().max_nonce_bytes() {
-            return Err(ProtocolError::InvalidNonce.into());
+        let maximum = policy.resources().max_nonce_bytes();
+        let combined_length = client_nonce.len().saturating_add(ENCODED_NONCE_BYTES);
+        if combined_length > maximum {
+            return Err(ProtocolError::NonceTooLarge {
+                length: combined_length,
+                maximum,
+            }
+            .into());
         }
         let mut entropy = Zeroizing::new([0_u8; NONCE_ENTROPY_BYTES]);
         nonce_source.fill(entropy.as_mut())?;

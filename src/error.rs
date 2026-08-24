@@ -35,7 +35,7 @@ pub enum ProtocolError {
     InvalidIdentityEscape,
     /// An iteration count was zero, malformed, noncanonical, or too large.
     InvalidIterationCount,
-    /// A nonce was empty, malformed, or oversized.
+    /// A nonce was empty, malformed, or semantically inconsistent.
     InvalidNonce,
     /// A channel-binding name was malformed.
     InvalidChannelBindingName,
@@ -60,6 +60,13 @@ pub enum ProtocolError {
     /// Decoded channel-binding data exceeded its configured byte limit.
     ChannelBindingTooLarge {
         /// The decoded channel-binding length.
+        length: usize,
+        /// The configured maximum.
+        maximum: usize,
+    },
+    /// A nonce exceeded the configured byte limit.
+    NonceTooLarge {
+        /// The nonce length.
         length: usize,
         /// The configured maximum.
         maximum: usize,
