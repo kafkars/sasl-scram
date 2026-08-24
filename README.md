@@ -7,8 +7,7 @@
 </p>
 
 <p align="center">
-  Client and server state machines with exact transcripts, explicit proof work,
-  channel binding, and zeroizing secret ownership.
+  Client/server state machines with exact transcripts, proofs, channel binding, and zeroization.
 </p>
 
 <p align="center">
@@ -43,8 +42,7 @@ Do not yet treat this version as a supported authentication dependency.
 sasl-scram = "0.0.1"
 ```
 
-The minimum supported Rust version is 1.88. The crate requires `alloc`; `std`
-is enabled by default and remains optional.
+Rust 1.88+ with required `alloc`; `std` is optional and enabled by default.
 
 ## Model
 
