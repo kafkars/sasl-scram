@@ -167,7 +167,7 @@ sha256 = "b0d8562871105f9da7ebaa61d812680dd31859c3ffe203066294e66f987ccbbf"
 [[gate]]
 name = "ci"
 path = ".github/workflows/ci.yml"
-sha256 = "e20682bcaf57d9d8db295e585bf8fb7dc454354b8317074d2bf22963e378b78d"
+sha256 = "3db290bdf67fa5c9b225d8d4b1c78d144930b4ea8cf44c006b6271593c0e7052"
 
 [[gate.input]]
 path = ".github/actions/setup-rust/action.yml"
