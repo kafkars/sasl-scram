@@ -10,7 +10,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4.13"
-sasl-scram = { path = "..", version = "=0.0.1", default-features = false, features = ["sha256", "sha512"] }
+sasl-scram = { path = "..", version = "=0.0.1-rc.1", default-features = false, features = ["sha256", "sha512"] }
 
 [[bin]]
 name = "client-first"

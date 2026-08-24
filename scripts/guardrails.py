@@ -186,7 +186,7 @@ def check_manifest(checks: Checks) -> None:
     checks.require(metadata.get("license") == "Apache-2.0", "license drift")
     checks.require(metadata.get("rust-version") == "1.88", "MSRV drift")
     checks.require(
-        metadata.get("repository") == "https://github.com/zsumz/sasl-scram",
+        metadata.get("repository") == "https://github.com/kafkars/sasl-scram",
         "repository metadata drift",
     )
     features = manifest.get("features", {})
