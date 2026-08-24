@@ -28,7 +28,7 @@
 
 ## Status
 
-`sasl-scram` is pre-alpha. Version `0.0.1-rc.2` implements the SHA-256 client and
+`sasl-scram` is pre-alpha. Version `0.0.1-rc.3` implements the SHA-256 client and
 server roles, including channel binding. SHA-512 is available as an opt-in
 extension profile.
 
@@ -39,7 +39,7 @@ Do not yet treat this version as a supported authentication dependency.
 
 ```toml
 [dependencies]
-sasl-scram = "0.0.1-rc.2"
+sasl-scram = "0.0.1-rc.3"
 ```
 
 Rust 1.88+ with required `alloc`; `std` is optional and enabled by default.
