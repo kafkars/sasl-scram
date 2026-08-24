@@ -220,6 +220,7 @@ title = "PLUS authenticates exact caller-supplied binding data without downgrade
 status = "enforced"
 document = "README.md#mechanisms"
 evidence = [
+  "rust-test:tests/client_config.rs::client_configuration_requires_explicit_binding_and_credentials",
   "rust-test:tests/channel_binding.rs::tls_exporter_plus_loopback_authenticates_only_matching_binding",
   "rust-test:tests/channel_binding.rs::every_one_bit_tls_exporter_mutation_fails_before_authentication",
   "rust-test:tests/channel_binding.rs::plus_gs2_header_mutation_fails_before_proof_verification",

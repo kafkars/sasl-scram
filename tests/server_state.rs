@@ -1,5 +1,4 @@
 //! SCRAM-SHA-256 server typestate, proof, authorization, and concealment paths.
-
 #![cfg(feature = "sha256")]
 
 use core::num::{NonZeroU32, NonZeroUsize};
@@ -241,6 +240,7 @@ fn start_client(
     let credentials = AsciiProfile::prepare("user", SecretString::new("pencil"))?;
     let config = ClientConfig::builder(Algorithm::Sha256)
         .credentials(credentials)
+        .channel_binding(sasl_scram::ChannelBindingMode::Unsupported)
         .policy(policy)
         .build()?;
     Client::start(config, &mut FilledNonce(0))

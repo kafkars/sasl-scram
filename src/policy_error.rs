@@ -66,4 +66,6 @@ pub enum PolicyError {
     },
     /// The peer selected a channel-binding type other than the configured type.
     UnsupportedChannelBindingType,
+    /// Client configuration omitted an explicit channel-binding mode.
+    MissingChannelBindingMode,
 }

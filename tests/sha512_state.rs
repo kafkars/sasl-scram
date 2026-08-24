@@ -114,6 +114,7 @@ fn sha512_records_enforce_algorithm_and_output_size_before_randomness() -> Resul
         let client_credentials = AsciiProfile::prepare("alice", SecretString::new("password"))?;
         let client_config = ClientConfig::builder(Algorithm::Sha512)
             .credentials(client_credentials)
+            .channel_binding(ChannelBindingMode::Unsupported)
             .build()?;
         let (_, client_first) = Client::start(client_config, &mut FixedNonce(1))?;
         let server_config = ServerConfig::builder(Algorithm::Sha512).build()?;
@@ -140,6 +141,7 @@ fn sha512_concealed_user_runs_proof_path_without_a_principal() -> Result<(), Err
     let client_credentials = AsciiProfile::prepare("missing", SecretString::new("password"))?;
     let client_config = ClientConfig::builder(Algorithm::Sha512)
         .credentials(client_credentials)
+        .channel_binding(ChannelBindingMode::Unsupported)
         .build()?;
     let server_config = ServerConfig::builder(Algorithm::Sha512).build()?;
     let (client, client_first) = Client::start(client_config, &mut FixedNonce(3))?;
@@ -178,6 +180,7 @@ fn sha512_secret_states_remain_send_redacted_and_zeroize_on_drop() -> Result<(),
     let credentials = AsciiProfile::prepare("alice", SecretString::new("alice-secret"))?;
     let config = ClientConfig::builder(Algorithm::Sha512)
         .credentials(credentials)
+        .channel_binding(ChannelBindingMode::Unsupported)
         .build()?;
     let (client, _) = Client::start(config, &mut FixedNonce(1))?;
     let pending = client.receive_server_first(b"r=AQEBAQEBAQEBAQEBAQEBserver,s=c2FsdA==,i=4096")?;

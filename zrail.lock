@@ -2,7 +2,7 @@
 schema = 1
 semantics = 2
 producer = "0.0.2"
-contract_sha256 = "ce03f1c38b970ec86a05f80aef3db8f81ae9306170702611b25d52f765b5c1a4"
+contract_sha256 = "ebf9bef14aafba92389f2dc7ffaa12fcce5d1f7b3ef60a5df285b38509690638"
 ratchet = []
 
 [[package]]
@@ -162,7 +162,7 @@ sha256 = "72d7375d44a626b37a7f09c2e285ef6e6a95be2ddce2dbe41163a43f4c65fc5a"
 
 [[gate.input]]
 path = "scripts/package-check"
-sha256 = "1b0733fc1173879d462301c4213c1a44e7700a8fab3dfe27bd30dead3b46006d"
+sha256 = "d11e1b9d42d156d819770bc8d85a4aa4f35de32d1111204681ca27674bff6d09"
 
 [[gate]]
 name = "ci"

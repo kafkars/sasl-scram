@@ -21,12 +21,14 @@ pub struct ClientConfig {
 impl ZeroizeOnDrop for ClientConfig {}
 
 impl ClientConfig {
-    /// Starts a builder for an explicit algorithm with unbound SCRAM and default limits.
+    /// Starts a builder for an explicit algorithm and default limits.
+    ///
+    /// The caller must select a channel-binding mode before building the configuration.
     pub fn builder(algorithm: Algorithm) -> ClientConfigBuilder {
         ClientConfigBuilder {
             algorithm,
             credentials: None,
-            channel_binding: ChannelBindingMode::Unsupported,
+            channel_binding: None,
             policy: ClientPolicy::default(),
         }
     }
@@ -49,7 +51,7 @@ impl fmt::Debug for ClientConfig {
 pub struct ClientConfigBuilder {
     algorithm: Algorithm,
     credentials: Option<PreparedCredentials>,
-    channel_binding: ChannelBindingMode,
+    channel_binding: Option<ChannelBindingMode>,
     policy: ClientPolicy,
 }
 
@@ -64,7 +66,7 @@ impl ClientConfigBuilder {
 
     /// Selects the GS2 channel-binding negotiation result.
     pub fn channel_binding(mut self, channel_binding: ChannelBindingMode) -> Self {
-        self.channel_binding = channel_binding;
+        self.channel_binding = Some(channel_binding);
         self
     }
 
@@ -79,7 +81,10 @@ impl ClientConfigBuilder {
         let Some(proof_bytes) = self.algorithm.output_len() else {
             return Err(PolicyError::AlgorithmNotPermitted);
         };
-        if let ChannelBindingMode::Required(binding) = &self.channel_binding {
+        let Some(channel_binding) = self.channel_binding else {
+            return Err(PolicyError::MissingChannelBindingMode);
+        };
+        if let ChannelBindingMode::Required(binding) = &channel_binding {
             let maximum = self.policy.resources().max_channel_binding_bytes();
             if binding.data().len() > maximum {
                 return Err(PolicyError::ChannelBindingTooLarge {
@@ -91,7 +96,7 @@ impl ClientConfigBuilder {
         let Some(credentials) = self.credentials else {
             return Err(PolicyError::MissingCredentials);
         };
-        let (binding_name_bytes, binding_data_bytes) = match &self.channel_binding {
+        let (binding_name_bytes, binding_data_bytes) = match &channel_binding {
             ChannelBindingMode::Required(binding) => {
                 (binding.name().as_str().len(), binding.data().len())
             }
@@ -133,7 +138,7 @@ impl ClientConfigBuilder {
         Ok(ClientConfig {
             algorithm: self.algorithm,
             credentials,
-            channel_binding: self.channel_binding,
+            channel_binding,
             policy: self.policy,
         })
     }
@@ -145,7 +150,7 @@ impl fmt::Debug for ClientConfigBuilder {
             .debug_struct("ClientConfigBuilder")
             .field("algorithm", &self.algorithm)
             .field("has_credentials", &self.credentials.is_some())
-            .field("channel_binding", &self.channel_binding)
+            .field("has_channel_binding_mode", &self.channel_binding.is_some())
             .field("policy", &self.policy)
             .finish()
     }

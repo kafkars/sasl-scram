@@ -152,14 +152,11 @@ fn client_states_are_send_and_debug_output_is_redacted() -> Result<(), Error> {
 }
 
 #[test]
-fn configuration_rejects_missing_credentials_and_nonce_failure() -> Result<(), Error> {
-    assert!(matches!(
-        ClientConfig::builder(Algorithm::Sha256).build(),
-        Err(PolicyError::MissingCredentials)
-    ));
+fn configured_client_surfaces_nonce_failure() -> Result<(), Error> {
     let credentials = AsciiProfile::prepare("user", SecretString::new("pencil"))?;
     let config = ClientConfig::builder(Algorithm::Sha256)
         .credentials(credentials)
+        .channel_binding(ChannelBindingMode::Unsupported)
         .build()?;
     assert!(matches!(
         Client::start(config, &mut FailingNonce),
@@ -175,6 +172,7 @@ fn static_client_configuration_failures_precede_randomness() -> Result<(), Error
     assert_static_failure(
         ClientConfig::builder(Algorithm::Sha256)
             .credentials(credentials)
+            .channel_binding(ChannelBindingMode::Unsupported)
             .policy(ClientPolicy::new(
                 identity_limits,
                 IterationPolicy::default(),
@@ -199,6 +197,7 @@ fn static_client_configuration_failures_precede_randomness() -> Result<(), Error
     assert_static_failure(
         ClientConfig::builder(Algorithm::Sha256)
             .credentials(credentials)
+            .channel_binding(ChannelBindingMode::Unsupported)
             .policy(ClientPolicy::new(
                 authorization_limits,
                 IterationPolicy::default(),
@@ -221,6 +220,7 @@ fn static_client_configuration_failures_precede_randomness() -> Result<(), Error
     assert_static_failure(
         ClientConfig::builder(Algorithm::Sha256)
             .credentials(credentials)
+            .channel_binding(ChannelBindingMode::Unsupported)
             .policy(ClientPolicy::new(
                 capacity_limits,
                 IterationPolicy::default(),
@@ -258,6 +258,7 @@ fn sha512_feature_enables_the_complete_client_profile() -> Result<(), Error> {
     let credentials = AsciiProfile::prepare("user", SecretString::new("pencil"))?;
     let config = ClientConfig::builder(Algorithm::Sha512)
         .credentials(credentials)
+        .channel_binding(ChannelBindingMode::Unsupported)
         .build()?;
     let (_, first) = Client::start(config, &mut ZeroNonce)?;
     assert!(first.as_bytes().starts_with(b"n,,n=user,r="));
@@ -270,6 +271,7 @@ fn start(
     let credentials = AsciiProfile::prepare("user", SecretString::new("pencil"))?;
     let config = ClientConfig::builder(Algorithm::Sha256)
         .credentials(credentials)
+        .channel_binding(ChannelBindingMode::Unsupported)
         .policy(policy)
         .build()?;
     Client::start(config, &mut ZeroNonce)

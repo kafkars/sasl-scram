@@ -136,7 +136,9 @@ fn configurations_and_errors_do_not_retain_sensitive_input() -> Result<(), Error
         "configuration-user",
         SecretString::new("configuration-password"),
     )?;
-    let builder = ClientConfig::builder(Algorithm::Sha256).credentials(credentials);
+    let builder = ClientConfig::builder(Algorithm::Sha256)
+        .credentials(credentials)
+        .channel_binding(ChannelBindingMode::Unsupported);
     assert_redacted(&builder, &["configuration-user", "configuration-password"]);
     let config = builder.build()?;
     assert_redacted(&config, &["configuration-user", "configuration-password"]);

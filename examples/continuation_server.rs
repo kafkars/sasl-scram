@@ -60,6 +60,7 @@ fn main() -> Result<(), ReferenceError> {
     let credentials = AsciiProfile::prepare("user", SecretString::new("pencil"))?;
     let client_config = ClientConfig::builder(Algorithm::Sha256)
         .credentials(credentials)
+        .channel_binding(sasl_scram::ChannelBindingMode::Unsupported)
         .build()?;
     let server_config = ServerConfig::builder(Algorithm::Sha256).build()?;
     let mut store = CredentialStore::new()?;

@@ -40,6 +40,7 @@ required=(
   examples/support/nonce.rs
   src/lib.rs
   tests/channel_binding.rs
+  tests/client_config.rs
   tests/client_state.rs
   tests/hostile_messages.rs
   tests/identity_properties.rs

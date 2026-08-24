@@ -146,6 +146,7 @@ fn authenticated_transcript_mutation_invalidates_the_rfc_server_verifier() -> Re
     let credentials = AsciiProfile::prepare("user", SecretString::new("pencil"))?;
     let config = ClientConfig::builder(Algorithm::Sha256)
         .credentials(credentials)
+        .channel_binding(ChannelBindingMode::Unsupported)
         .build()?;
     let mut nonce = FixedNonce([
         0xac, 0xea, 0x6b, 0x34, 0x67, 0xf0, 0x11, 0xb7, 0x91, 0x5a, 0x06, 0xcd, 0x12, 0x4a, 0x8e,

@@ -231,6 +231,7 @@ fn need_credential(policy: ServerPolicy) -> Result<NeedCredential, Error> {
     let (_, first) = Client::start(
         ClientConfig::builder(Algorithm::Sha256)
             .credentials(credentials)
+            .channel_binding(ChannelBindingMode::Unsupported)
             .build()?,
         &mut TrackingNonce {
             called: false,

@@ -37,6 +37,7 @@ fn authentication_authorization_and_application_principal_remain_distinct() -> R
     );
     let client_config = ClientConfig::builder(Algorithm::Sha256)
         .credentials(credentials)
+        .channel_binding(ChannelBindingMode::Unsupported)
         .policy(client_policy)
         .build()?;
     let (client, client_first) = Client::start(client_config, &mut FilledNonce(0))?;
