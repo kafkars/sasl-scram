@@ -48,7 +48,10 @@ impl fmt::Debug for PreparedPassword {
     }
 }
 
-/// Credentials prepared exactly once for consumption by the SCRAM core.
+/// Credentials prepared exactly once for one SCRAM conversation.
+///
+/// Reconnects should construct a fresh value from caller-owned, zeroizing
+/// credential material rather than cloning this secret owner.
 pub struct PreparedCredentials {
     authentication_identity: PreparedAuthenticationIdentity,
     authorization_identity: Option<PreparedAuthorizationIdentity>,

@@ -84,6 +84,15 @@ let authenticated = client.receive_server_final(&server_final)?;
 Authentication succeeds only after constant-time verification of the server
 signature over the exact transcript.
 
+Every client configuration must explicitly select `Unsupported`,
+`AvailableButNotNegotiated`, or `Required`; omission returns
+`MissingChannelBindingMode`.
+
+`PreparedCredentials` is consumed by one conversation and intentionally is not
+`Clone`. A reconnect factory should retain normalized credential material in
+caller-owned zeroizing storage, construct fresh credentials per connection,
+and select channel binding from that connection's TLS session.
+
 ## Server
 
 Credential lookup and authorization are caller-owned continuations. Received
