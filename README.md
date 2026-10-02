@@ -133,6 +133,19 @@ ASCII-only identity contract.
 The public API exposes no sockets, async runtime, TLS implementation,
 credential database, secret serialization, or bring-your-own-crypto trait.
 
+## Supported-release boundary
+
+The current release candidate does not make a stable-release promise. A future
+supported line must preserve its public source API, exact-transcript and secret
+ownership contracts, and Rust 1.88 MSRV across patch releases. Breaking changes
+require an explicitly announced new compatibility line.
+
+The Kafka-used promotion target is the client role with `std`, `sha256`,
+`sha512`, and `saslprep`, without PLUS. Supported mechanism, role, preparation,
+and channel-binding claims require their own applicable qualification. Kafka
+client evidence does not establish hosted server-role or PLUS interoperability;
+the fixed PostgreSQL-style transcript fixture is not a hosted PostgreSQL run.
+
 ## Reference applications
 
 ```sh
