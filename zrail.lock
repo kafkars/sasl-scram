@@ -118,7 +118,7 @@ sha256 = "05528c493469fdbc677cb4aa86f513108390e82da478bf2388ca404a607c7ebb"
 
 [[gate.input]]
 path = "README.md"
-sha256 = "e62af1334eb03c53c5cbcdad4b4a4b82bffb1da265e7a571a5a242b75ed0a8d4"
+sha256 = "7c1c58230e3a31684052352e979075c3bd66372b9095c142cbaefc639e4a6273"
 
 [[gate.input]]
 path = "clippy.toml"
